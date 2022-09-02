@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "name": "gamepad-input",
+  "type": "module",
+  "dependencies": {
+    "chokidar": "^3.5.3"
+  }
+}

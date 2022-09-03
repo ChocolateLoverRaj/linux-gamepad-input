@@ -8,7 +8,8 @@ import { access}  from 'fs/promises'
 import { once } from 'events'
 import watchIfExists from './watchIfExists.js'
 import changeIterator from './changeIterator.js'
-
+import { setInterval } from 'timers/promises'
+import mapAsync1By1 from './mapAsync1By1.js'
 const bluetooth = createBluetooth()
 
 const parseGpio = envVar => {
@@ -43,28 +44,44 @@ const blinker = {
     if (err) {
       throw err
     }
-    
+
     if (gamepadExists) {
       // TODO: Connect to different device
     } else {
       const adapter = await adapterPromise
-      const devices = await adapter.devices()
-      for (const id of devices) {
-        const device = await adapter.getDevice(id)
-        console.log(`Name: ${await device.getName()}`)
-        console.log(`Address Type: ${await device.getAddressType()}`)
-        console.log(`Address: ${await device.getAddress()}`)
-        console.log(`Paired: ${await device.isPaired()}`)
-        console.log(`Connected: ${await device.isConnected()}`)
-        device.on('connect', async () => {
-          console.log('Bluetooth device connected: ', await device.getName())
-        })
-        device.on('disconnect', async () => {
-          console.log('Bluetooth device disconnected: ', await device.getName())
-        })
+      // const devices = await adapter.devices()
+      // for (const id of devices) {
+      //   const device = await adapter.getDevice(id)
+      //   console.log(`Name: ${await device.getName()}`)
+      //   console.log(`Address Type: ${await device.getAddressType()}`)
+      //   console.log(`Address: ${await device.getAddress()}`)
+      //   console.log(`Paired: ${await device.isPaired()}`)
+      //   console.log(`Connected: ${await device.isConnected()}`)
+      //   device.on('connect', async () => {
+      //     console.log('Connect')
+      //     console.log('Bluetooth device connected: ', await device.getName())
+      //   })
+      //   device.on('disconnect', async () => {
+      //     console.log('Bluetooth device disconnected: ', await device.getName())
+      //   })
+      // }
+      await adapter.startDiscovery()
+      for await (const _ of setInterval(1000, undefined)) {
+        console.log((await mapAsync1By1(await adapter.devices(), async id => {
+          try {
+            const device = await adapter.getDevice(id)   
+            // return [{
+            //   name: await device.getName(),
+            //   address: await device.getAddress(),
+            //   paired: await device.isPaired(),
+            //   connected: await device.isConnected()
+            // }]
+          } catch (e) {
+            return []
+          }
+        })).flat())
       }
 
-      console.log('hi')
       if (blinkController) {
         blinkController.abort()
       }
@@ -75,6 +92,10 @@ const blinker = {
 
   for await (gamepadExists of changeIterator(watchIfExists('/dev/input/js0', true))) {
     await bluetoothLight.write(Number(gamepadExists))
+    if (blinkController) {
+      blinkController.abort()
+      blinkController = undefined
+    }
   }
 })()
 

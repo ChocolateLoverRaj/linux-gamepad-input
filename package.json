@@ -12,8 +12,9 @@
   },
   "dependencies": {
     "@hkaspy/joystick-linux": "^1.0.0",
+    "dbus-next": "github:tuxedoxt/node-dbus-next#e875f30",
     "dotenv": "^16.0.2",
-    "node-ble": "^1.7.0",
+    "node-ble": "github:tuxedoxt/node-ble#fca927b",
     "onoff": "^6.0.3"
   }
 }

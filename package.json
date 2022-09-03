@@ -2,7 +2,18 @@
   "private": true,
   "name": "gamepad-input",
   "type": "module",
+  "main": "index.js",
+  "devDependencies": {
+    "eslint": "^8.23.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-n": "^15.0.0",
+    "eslint-plugin-promise": "^6.0.0"
+  },
   "dependencies": {
-    "chokidar": "^3.5.3"
+    "@hkaspy/joystick-linux": "^1.0.0",
+    "bluetoothctl": "^1.1.0",
+    "dotenv": "^16.0.2",
+    "onoff": "^6.0.3"
   }
 }

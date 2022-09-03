@@ -1,12 +1,17 @@
 import { setInterval } from 'timers/promises'
+import { once } from 'events'
 
-const start = async blinker => {
+const start = async (blinker, signal) => {
   const interval = setInterval(blinker.interval, undefined, { 
     ref: false, 
-    signal: blinker.abortController.signal 
+    signal
   })
-  for await (const _ of interval) {
-    await blinker.gpio.write(Number(!(await blinker.gpio.read())))
+  try {
+    for await (const _ of interval) {
+      await blinker.gpio.write(Number(!(await blinker.gpio.read())))
+    }
+  } catch (e) {
+    if (e.code !== 'ABORT_ERR') throw e
   }
 }
 

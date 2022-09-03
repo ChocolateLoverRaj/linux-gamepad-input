@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@hkaspy/joystick-linux": "^1.0.0",
-    "bluetoothctl": "^1.1.0",
     "dotenv": "^16.0.2",
+    "node-ble": "^1.7.0",
     "onoff": "^6.0.3"
   }
 }

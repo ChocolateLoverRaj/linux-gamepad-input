@@ -3,6 +3,9 @@ import start from './blinker/start.js'
 import stop from './blinker/stop.js'
 import { config } from 'dotenv'
 config()
+import {createBluetooth} from 'node-ble'
+
+const bluetooth = createBluetooth()
 
 const parseGpio = envVar => {
   const envVarString = process.env[envVar]
@@ -27,16 +30,30 @@ const blinker = {
   abortController: new AbortController()
 }
 
-button.watch(err => {
-  if (err) {
-    throw err
-  }
-
-  start(blinker)
-})
+;(async () => {
+  const adapterPromise = bluetooth.bluetooth.defaultAdapter()
+  button.watch(async err => {
+    if (err) {
+      throw err
+    }
+  
+    const adapter = await adapterPromise
+    const devices = await adapter.devices()
+    for (const id of devices) {
+      const device = await adapter.getDevice(id)
+      console.log(`Name: ${await device.getName()}`)
+      console.log(`Address Type: ${await device.getAddressType()}`)
+      console.log(`Address: ${await device.getAddress()}`)
+      console.log(`Paired: ${await device.isPaired()}`)
+      console.log(`Connected: ${await device.isConnected()}`)
+    }
+    start(blinker)
+  })
+})()
 
 process.on('SIGINT', async () => {
   await stop(blinker)
+  bluetooth.destroy()
   button.unexport()
   bluetoothLight.unexport()
 })

@@ -14,7 +14,7 @@
     "eslint-plugin-promise": "^6.0.0"
   },
   "dependencies": {
-    "@hkaspy/joystick-linux": "github:ChocolateLoverRaj:joystick-linux#patch-1",
+    "@hkaspy/joystick-linux": "github:ChocolateLoverRaj/joystick-linux#103e4d0",
     "dotenv": "^16.0.2",
     "node-ble": "github:tuxedoxt/node-ble#fca927b",
     "onoff": "^6.0.3"

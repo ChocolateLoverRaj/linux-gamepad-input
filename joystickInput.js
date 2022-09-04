@@ -22,7 +22,7 @@ const getGamepadNumber = fileName => parseInt(fileName.slice(2))
       })
       .on('error', e => {
         if (e.code !== 'ENODEV') throw e
-        watching.remove(gamepadNumber)
+        watching.delete(gamepadNumber)
         console.log(gamepadNumber, 'disconnect')
       })
   }

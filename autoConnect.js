@@ -1,24 +1,16 @@
 import { Gpio } from 'onoff'
-import start from './blinker/start.js'
+import start from './helpers/blinker/start.js'
 import { config } from 'dotenv'
 import { createBluetooth } from 'node-ble'
-import watchIfExists from './watchIfExists.js'
-import changeIterator from './changeIterator.js'
+import watchIfExists from './helpers/watchIfExists.js'
+import changeIterator from './helpers/changeIterator.js'
 import { setInterval, scheduler } from 'timers/promises'
-import isGamepad from './isGamepad.js'
+import isGamepad from './helpers/isGamepad.js'
 import Joystick from '@hkaspy/joystick-linux'
+import parseEnvInt from './helpers/parseEnvInt.js'
 config()
 
 const bluetooth = createBluetooth()
-
-const parseEnvInt = envVar => {
-  const envVarString = process.env[envVar]
-  const int = parseInt(envVarString)
-  if (!Number.isInteger(int)) {
-    throw new Error(`The env var ${envVar} is ${envVarString}, which is not a valid integer.`)
-  }
-  return int
-}
 
 const buttonGpio = parseEnvInt('BUTTON_GPIO')
 const bluetoothLightGpio = parseEnvInt('BLUETOOTH_LIGHT_GPIO')
@@ -100,6 +92,7 @@ let blinkController
     if (gamepadExists) {
       // If the delay is very small or no delay, EACCESS could be thrown
       await scheduler.wait(readGamepadDelay)
+      // FIXME: new Joystick causes delay in exiting after Ctrl+C
       new Joystick(joystickPath, { includeInit: true })
         .on('update', ({ number, type, value }) => {
           if (type === 'BUTTON' && number === 0) {

@@ -2,12 +2,19 @@ import { readdir, watch } from 'fs/promises'
 import { join } from 'path'
 import Joystick from '@hkaspy/joystick-linux'
 import { scheduler } from 'timers/promises'
+import parseEnvInt from './helpers/parseEnvInt.js'
+import { config } from 'dotenv'
+config()
+
+const readGamepadDelay = parseEnvInt('READ_GAMEPAD_DELAY')
 
 const inputsDir = '/dev/input'
 
 const watching = new Set()
 
 const getGamepadNumber = fileName => parseInt(fileName.slice(2))
+
+const isGamepad = name => name.startsWith('js')
 
 ;(async () => {
   const watchGamepad = (gamepad) => {
@@ -29,23 +36,15 @@ const getGamepadNumber = fileName => parseInt(fileName.slice(2))
   // Watch already connected gamepads
   const dirs = await readdir(inputsDir)
   dirs
-    .filter(name => name.startsWith('js'))
+    .filter(isGamepad)
     .forEach(name => watchGamepad(name))
 
   // Watch new gamepads
   for await (const { filename } of watch(inputsDir)) {
-    if (filename.startsWith('js') && !watching.has(getGamepadNumber(filename))) {
-      await scheduler.wait(1000)
+    if (isGamepad(filename) && !watching.has(getGamepadNumber(filename))) {
+      // If the delay is very small or no delay, EACCESS could be thrown
+      await scheduler.wait(readGamepadDelay)
       watchGamepad(filename)
     }
   }
-  const gamepads = (await readdir(inputsDir, { withFileTypes: true }))
-    .filter(input => input.isCharacterDevice())
-    .map(({ name }) => name)
-    .filter(name => name.startsWith('js'))
-  console.log(gamepads)
-  gamepads.forEach(async gamepad => {
-    const stick = new Joystick(join(inputsDir, gamepad))
-    stick.on('update', console.log)
-  })
 })()

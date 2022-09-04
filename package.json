@@ -2,7 +2,7 @@
   "private": true,
   "name": "gamepad-input",
   "type": "module",
-  "main": "index.js",
+  "main": "autoConnect.js",
   "scripts": {
     "lint": "eslint ."
   },

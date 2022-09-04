@@ -2,32 +2,32 @@ import { Gpio } from 'onoff'
 import start from './blinker/start.js'
 import { config } from 'dotenv'
 import { createBluetooth } from 'node-ble'
-import { access } from 'fs/promises'
-import { once } from 'events'
 import watchIfExists from './watchIfExists.js'
 import changeIterator from './changeIterator.js'
-import { setInterval } from 'timers/promises'
-import mapAsync1By1 from './mapAsync1By1.js'
+import { setInterval, scheduler } from 'timers/promises'
 import isGamepad from './isGamepad.js'
+import Joystick from '@hkaspy/joystick-linux'
 config()
 
 const bluetooth = createBluetooth()
 
-const parseGpio = envVar => {
+const parseEnvInt = envVar => {
   const envVarString = process.env[envVar]
-  const gpio = parseInt(envVarString)
-  if (!Number.isInteger(gpio)) {
+  const int = parseInt(envVarString)
+  if (!Number.isInteger(int)) {
     throw new Error(`The env var ${envVar} is ${envVarString}, which is not a valid integer.`)
   }
-  return gpio
+  return int
 }
 
-const buttonGpio = parseGpio('BUTTON_GPIO')
-const bluetoothLightGpio = parseGpio('BLUETOOTH_LIGHT_GPIO')
-const outputLightGpio = parseGpio('OUTPUT_LIGHT_GPIO')
+const buttonGpio = parseEnvInt('BUTTON_GPIO')
+const bluetoothLightGpio = parseEnvInt('BLUETOOTH_LIGHT_GPIO')
+const outputLightGpio = parseEnvInt('OUTPUT_LIGHT_GPIO')
+const readGamepadDelay = parseEnvInt('READ_GAMEPAD_DELAY')
 
 const button = new Gpio(buttonGpio, 'in', 'rising')
 const bluetoothLight = new Gpio(bluetoothLightGpio, 'out')
+const outputLight = new Gpio(outputLightGpio, 'out')
 
 const blinker = {
   gpio: bluetoothLight,
@@ -57,6 +57,7 @@ let blinkController
 
       const adapter = await adapterPromise
       await adapter.startDiscovery()
+      /* eslint-disable-next-line no-labels */
       Discovery: for await (const _ of setInterval(1000, undefined)) {
         const devices = await adapter.devices()
         for (const id of devices) {
@@ -72,6 +73,7 @@ let blinkController
             try {
               await device.connect()
               console.log('Connected to gamepad: ' + name)
+              /* eslint-disable-next-line no-labels */
               break Discovery
             } catch {
               console.log('Failed to gamepad: ' + name)
@@ -83,11 +85,30 @@ let blinkController
     }
   })
 
-  for await (gamepadExists of changeIterator(watchIfExists('/dev/input/js0', { initialCheck: true, watchOptions: { persistent: false } }))) {
+  const joystickPath = '/dev/input/js0'
+  const existsIterator = changeIterator(watchIfExists(joystickPath, {
+    initialCheck: true,
+    watchOptions: { persistent: false }
+  }))
+  for await (gamepadExists of existsIterator) {
     await bluetoothLight.write(Number(gamepadExists))
     if (blinkController) {
       blinkController.abort()
       blinkController = undefined
+    }
+
+    if (gamepadExists) {
+      // If the delay is very small or no delay, EACCESS could be thrown
+      await scheduler.wait(readGamepadDelay)
+      new Joystick(joystickPath, { includeInit: true })
+        .on('update', ({ number, type, value }) => {
+          if (type === 'BUTTON' && number === 0) {
+            outputLight.write(value)
+          }
+        })
+        .on('error', e => {
+          if (e.code !== 'ENODEV') throw e
+        })
     }
   }
 })()

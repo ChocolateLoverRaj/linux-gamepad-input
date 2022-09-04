@@ -1,4 +1,3 @@
-import { createReadStream } from 'fs'
 import { readdir, watch } from 'fs/promises'
 import { join } from 'path'
 import Joystick from '@hkaspy/joystick-linux'

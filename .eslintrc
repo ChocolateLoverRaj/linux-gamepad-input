@@ -1,3 +1,15 @@
 {
-  "extends": "standard"
+  "extends": "standard",
+  "rules": {
+    "max-len": [
+      "error",
+      100
+    ],
+    "no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^_"
+      }
+    ]
+  }
 }

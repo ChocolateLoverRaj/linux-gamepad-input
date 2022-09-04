@@ -1,5 +1,4 @@
 import { setInterval } from 'timers/promises'
-import { once } from 'events'
 
 const start = async (blinker, signal) => {
   const interval = setInterval(blinker.interval, undefined, {

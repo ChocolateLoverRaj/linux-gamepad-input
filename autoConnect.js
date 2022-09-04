@@ -1,15 +1,16 @@
 import { Gpio } from 'onoff'
 import start from './blinker/start.js'
-import stop from './blinker/stop.js'
 import { config } from 'dotenv'
-config()
-import {createBluetooth} from 'node-ble'
-import { access}  from 'fs/promises'
+import { createBluetooth } from 'node-ble'
+import { access } from 'fs/promises'
 import { once } from 'events'
 import watchIfExists from './watchIfExists.js'
 import changeIterator from './changeIterator.js'
 import { setInterval } from 'timers/promises'
 import mapAsync1By1 from './mapAsync1By1.js'
+import isGamepad from './isGamepad.js'
+config()
+
 const bluetooth = createBluetooth()
 
 const parseGpio = envVar => {
@@ -34,12 +35,12 @@ const blinker = {
   startOn: true
 }
 
+let blinkController
 ;(async () => {
   const adapterPromise = bluetooth.bluetooth.defaultAdapter()
 
   let gamepadExists
-  let blinkController
-  
+
   button.watch(async err => {
     if (err) {
       throw err
@@ -48,49 +49,41 @@ const blinker = {
     if (gamepadExists) {
       // TODO: Connect to different device
     } else {
-      const adapter = await adapterPromise
-      // const devices = await adapter.devices()
-      // for (const id of devices) {
-      //   const device = await adapter.getDevice(id)
-      //   console.log(`Name: ${await device.getName()}`)
-      //   console.log(`Address Type: ${await device.getAddressType()}`)
-      //   console.log(`Address: ${await device.getAddress()}`)
-      //   console.log(`Paired: ${await device.isPaired()}`)
-      //   console.log(`Connected: ${await device.isConnected()}`)
-      //   device.on('connect', async () => {
-      //     console.log('Connect')
-      //     console.log('Bluetooth device connected: ', await device.getName())
-      //   })
-      //   device.on('disconnect', async () => {
-      //     console.log('Bluetooth device disconnected: ', await device.getName())
-      //   })
-      // }
-      await adapter.startDiscovery()
-      for await (const _ of setInterval(1000, undefined)) {
-        console.log((await mapAsync1By1(await adapter.devices(), async id => {
-          try {
-            const device = await adapter.getDevice(id)   
-            // return [{
-            //   name: await device.getName(),
-            //   address: await device.getAddress(),
-            //   paired: await device.isPaired(),
-            //   connected: await device.isConnected()
-            // }]
-          } catch (e) {
-            return []
-          }
-        })).flat())
-      }
-
       if (blinkController) {
         blinkController.abort()
       }
       blinkController = new AbortController()
       start(blinker, blinkController.signal)
+
+      const adapter = await adapterPromise
+      await adapter.startDiscovery()
+      Discovery: for await (const _ of setInterval(1000, undefined)) {
+        const devices = await adapter.devices()
+        for (const id of devices) {
+          const device = await adapter.getDevice(id)
+          const getName = async () => {
+            try {
+              return await device.getName()
+            } catch {}
+          }
+          const name = await getName()
+          if (name !== undefined && isGamepad(name)) {
+            console.log('Connecting to gamepad: ' + name)
+            try {
+              await device.connect()
+              console.log('Connected to gamepad: ' + name)
+              break Discovery
+            } catch {
+              console.log('Failed to gamepad: ' + name)
+            }
+          }
+        }
+      }
+      await adapter.stopDiscovery()
     }
   })
 
-  for await (gamepadExists of changeIterator(watchIfExists('/dev/input/js0', true))) {
+  for await (gamepadExists of changeIterator(watchIfExists('/dev/input/js0', { initialCheck: true, watchOptions: { persistent: false } }))) {
     await bluetoothLight.write(Number(gamepadExists))
     if (blinkController) {
       blinkController.abort()
@@ -100,8 +93,10 @@ const blinker = {
 })()
 
 process.on('SIGINT', async () => {
-  await stop(blinker)
+  blinkController?.abort()
+  await bluetoothLight.write(0)
   bluetooth.destroy()
   button.unexport()
   bluetoothLight.unexport()
+  process.exit(0)
 })

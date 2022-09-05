@@ -63,6 +63,7 @@ let blinkController
           if (name !== undefined && isGamepad(name)) {
             console.log('Connecting to gamepad: ' + name)
             try {
+              await device.pair()
               await device.connect()
               console.log('Connected to gamepad: ' + name)
               /* eslint-disable-next-line no-labels */

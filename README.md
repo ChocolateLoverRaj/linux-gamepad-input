@@ -1,3 +1,5 @@
+# Moved to [Raspberry Pi Projects](https://github.com/ChocolateLoverRaj/raspberry-pi-projects)
+
 ## Goal
 Control GPIO using any compatible bluetooth gamepad.
 
